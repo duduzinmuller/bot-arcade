@@ -1,0 +1,35 @@
+{
+  "name": "discord-xp-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord com sistema de XP e níveis similar ao Arcane",
+  "main": "src/bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js",
+    "web": "node src/web/server.js",
+    "setup": "node src/setup.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "sqlite3": "^5.1.6",
+    "express": "^4.18.2",
+    "canvas": "^2.11.2",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "rate-limiter-flexible": "^7.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "xp",
+    "levels",
+    "ranking"
+  ],
+  "author": "Discord XP Bot",
+  "license": "MIT"
+}
