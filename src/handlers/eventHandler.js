@@ -4,20 +4,24 @@ export class EventHandler {
   }
 
   loadEvents() {
-    this.bot.client.once('ready', () => this.onReady());
-    this.bot.client.on('interactionCreate', (interaction) => this.onInteractionCreate(interaction));
-    this.bot.client.on('messageCreate', (message) => this.onMessageCreate(message));
-    this.bot.client.on('guildCreate', (guild) => this.onGuildCreate(guild));
+    this.bot.client.once("ready", () => this.onReady());
+    this.bot.client.on("interactionCreate", (interaction) =>
+      this.onInteractionCreate(interaction)
+    );
+    this.bot.client.on("messageCreate", (message) =>
+      this.onMessageCreate(message)
+    );
+    this.bot.client.on("guildCreate", (guild) => this.onGuildCreate(guild));
   }
 
   async onReady() {
     console.log(`🤖 Bot logado como ${this.bot.client.user.tag}!`);
-    console.log(`📊 Conectado em ${this.bot.client.guilds.cache.size} servidores`);
-    
-    // Registrar comandos slash
+    console.log(
+      `📊 Conectado em ${this.bot.client.guilds.cache.size} servidores`
+    );
+
     await this.registerSlashCommands();
-    
-    // Limpar cooldowns antigos a cada 5 minutos
+
     setInterval(() => {
       this.bot.antiSpam.cleanupOldEntries();
     }, 300000);
@@ -25,12 +29,16 @@ export class EventHandler {
 
   async registerSlashCommands() {
     try {
-      const commands = Array.from(this.bot.commands.values()).map(cmd => cmd.data.toJSON());
-      
+      const commands = Array.from(this.bot.commands.values()).map((cmd) =>
+        cmd.data.toJSON()
+      );
+
       await this.bot.client.application.commands.set(commands);
-      console.log(`✅ ${commands.length} comandos slash registrados globalmente`);
+      console.log(
+        `✅ ${commands.length} comandos slash registrados globalmente`
+      );
     } catch (error) {
-      console.error('❌ Erro ao registrar comandos slash:', error);
+      console.error("❌ Erro ao registrar comandos slash:", error);
     }
   }
 
@@ -52,9 +60,11 @@ export class EventHandler {
 
   async handleXPGain(message) {
     const settings = await this.bot.database.getGuildSettings(message.guild.id);
-    
+
     // Verificar cooldown anti-spam
-    if (this.bot.antiSpam.isOnCooldown(message.author.id, settings.xp_cooldown)) {
+    if (
+      this.bot.antiSpam.isOnCooldown(message.author.id, settings.xp_cooldown)
+    ) {
       return;
     }
 
@@ -73,7 +83,7 @@ export class EventHandler {
 
   async handleLevelUp(message, result) {
     const settings = await this.bot.database.getGuildSettings(message.guild.id);
-    
+
     // Verificar recompensas de nível
     await this.bot.xpSystem.checkLevelRewards(
       message.author.id,
@@ -84,10 +94,10 @@ export class EventHandler {
 
     // Enviar mensagem de level up
     const levelUpMessage = settings.level_up_message
-      .replace('{user}', `<@${message.author.id}>`)
-      .replace('{level}', result.newLevel);
+      .replace("{user}", `<@${message.author.id}>`)
+      .replace("{level}", result.newLevel);
 
-    const channel = settings.level_up_channel 
+    const channel = settings.level_up_channel
       ? message.guild.channels.cache.get(settings.level_up_channel)
       : message.channel;
 
@@ -98,7 +108,7 @@ export class EventHandler {
 
   async onGuildCreate(guild) {
     console.log(`🎉 Bot adicionado ao servidor: ${guild.name} (${guild.id})`);
-    
+
     // Criar configurações padrão para o servidor
     await this.bot.database.getGuildSettings(guild.id);
   }
