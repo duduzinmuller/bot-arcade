@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord XP Bot - Painel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #5865F2;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #5865F2, #7289DA);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.05);
+        }
+
+        .stat-card i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            opacity: 0.8;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .guild-input {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .guild-input input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .guild-input input:focus {
+            outline: none;
+            border-color: #5865F2;
+        }
+
+        .btn {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #4752C4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .ranking-list {
+            list-style: none;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .ranking-item:hover {
+            background: #e9ecef;
+        }
+
+        .rank-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-right: 20px;
+            min-width: 40px;
+        }
+
+        .rank-number.gold { color: #FFD700; }
+        .rank-number.silver { color: #C0C0C0; }
+        .rank-number.bronze { color: #CD7F32; }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .user-stats {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .settings-form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #5865F2;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .guild-input {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-robot"></i> Discord XP Bot</h1>
+            <p>Painel de Controle e Estatísticas</p>
+        </div>
+
+        <div class="card">
+            <h2><i class="fas fa-server"></i> Selecionar Servidor</h2>
+            <div class="guild-input">
+                <input type="text" id="guildId" placeholder="Digite o ID do servidor Discord">
+                <button class="btn" onclick="loadGuildData()">
+                    <i class="fas fa-search"></i> Carregar
+                </button>
+            </div>
+        </div>
+
+        <div id="content"></div>
+    </div>
+
+    <script>
+        let currentGuildId = null;
+
+        async function loadGuildData() {
+            const guildId = document.getElementById('guildId').value.trim();
+            if (!guildId) {
+                alert('Por favor, digite o ID do servidor');
+                return;
+            }
+
+            currentGuildId = guildId;
+            const content = document.getElementById('content');
+            
+            content.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Carregando dados do servidor...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/guilds/${guildId}/stats`);
+                
+                if (!response.ok) {
+                    throw new Error('Servidor não encontrado ou erro na API');
+                }
+
+                const data = await response.json();
+                displayGuildData(data);
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Erro ao carregar dados: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayGuildData(data) {
+            const content = document.getElementById('content');
+            
+            content.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-users"></i>
+                        <h3>${data.totalUsers}</h3>
+                        <p>Usuários Ativos</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-star"></i>
+                        <h3>${data.settings.xp_per_message}</h3>
+                        <p>XP por Mensagem</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-clock"></i>
+                        <h3>${data.settings.xp_cooldown / 1000}s</h3>
+                        <p>Cooldown</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-trophy"></i>
+                        <h3>${data.rewards.length}</h3>
+                        <p>Recompensas</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2><i class="fas fa-crown"></i> Top 10 Usuários</h2>
+                    <ul class="ranking-list">
+                        ${data.topUsers.map((user, index) => `
+                            <li class="ranking-item">
+                                <div class="rank-number ${getRankClass(index + 1)}">
+                                    ${getRankIcon(index + 1)}
+                                </div>
+                                <div class="user-info">
+                                    <div class="user-name">Usuário ${user.id.slice(0, 8)}...</div>
+                                    <div class="user-stats">
+                                        Nível ${user.level} • ${user.xp.toLocaleString()} XP • ${user.total_messages.toLocaleString()} mensagens
+                                    </div>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h2><i class="fas fa-cog"></i> Configurações</h2>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label for="xpPerMessage">XP por Mensagem:</label>
+                            <input type="number" id="xpPerMessage" value="${data.settings.xp_per_message}" min="1" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="xpCooldown">Cooldown (segundos):</label>
+                            <input type="number" id="xpCooldown" value="${data.settings.xp_cooldown / 1000}" min="10" max="300">
+                        </div>
+                        <div class="form-group">
+                            <label for="levelMultiplier">Multiplicador de Nível:</label>
+                            <input type="number" id="levelMultiplier" value="${data.settings.level_multiplier}" min="50" max="500">
+                        </div>
+                        <button class="btn" onclick="updateSettings()">
+                            <i class="fas fa-save"></i> Salvar Configurações
+                        </button>
+                    </div>
+                </div>
+
+                ${data.rewards.length > 0 ? `
+                    <div class="card">
+                        <h2><i class="fas fa-gift"></i> Recompensas de Nível</h2>
+                        <ul class="ranking-list">
+                            ${data.rewards.map(reward => `
+                                <li class="ranking-item">
+                                    <div class="rank-number">${reward.level}</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Nível ${reward.level}</div>
+                                        <div class="user-stats">Cargo ID: ${reward.role_id}</div>
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function getRankClass(rank) {
+            if (rank === 1) return 'gold';
+            if (rank === 2) return 'silver';
+            if (rank === 3) return 'bronze';
+            return '';
+        }
+
+        function getRankIcon(rank) {
+            if (rank === 1) return '🥇';
+            if (rank === 2) return '🥈';
+            if (rank === 3) return '🥉';
+            return `${rank}º`;
+        }
+
+        async function updateSettings() {
+            if (!currentGuildId) return;
+
+            const xpPerMessage = parseInt(document.getElementById('xpPerMessage').value);
+            const xpCooldown = parseInt(document.getElementById('xpCooldown').value) * 1000;
+            const levelMultiplier = parseInt(document.getElementById('levelMultiplier').value);
+
+            try {
+                const response = await fetch(`/api/guilds/${currentGuildId}/settings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        xp_per_message: xpPerMessage,
+                        xp_cooldown: xpCooldown,
+                        level_multiplier: levelMultiplier
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Configurações salvas com sucesso!');
+                    loadGuildData(); // Recarregar dados
+                } else {
+                    throw new Error('Erro ao salvar configurações');
+                }
+            } catch (error) {
+                alert('Erro ao salvar configurações: ' + error.message);
+            }
+        }
+
+        // Carregar dados automaticamente se houver um ID na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const guildIdFromUrl = urlParams.get('guild');
+        if (guildIdFromUrl) {
+            document.getElementById('guildId').value = guildIdFromUrl;
+            loadGuildData();
+        }
+    </script>
+</body>
+</html>
