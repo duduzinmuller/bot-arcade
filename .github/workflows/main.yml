@@ -12,12 +12,42 @@ env:
   NODE_VERSION: '22'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  CACHE_KEY: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
 
 jobs:
+  # Job de cache
+  cache:
+    name: Cache Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+            */*/node_modules
+          key: ${{ env.CACHE_KEY }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
   # Job de análise de código e qualidade
   code-quality:
     name: Análise de Código e Qualidade
     runs-on: ubuntu-latest
+    needs: cache
 
     steps:
       - name: Checkout do código
@@ -404,12 +434,43 @@ jobs:
         if: success()
         run: |
           echo "✅ Pipeline executado com sucesso!"
-          # Aqui você pode adicionar notificações de sucesso
-          # Exemplo: curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} -H "Content-Type: application/json" -d '{"content":"✅ Deploy concluído com sucesso!"}'
+          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "embeds": [{
+                  "title": "🎉 Deploy Concluído",
+                  "description": "Pipeline executado com sucesso!",
+                  "color": 3066993,
+                  "fields": [
+                    {"name": "Branch", "value": "${{ github.ref_name }}", "inline": true},
+                    {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
+                    {"name": "Autor", "value": "${{ github.actor }}", "inline": true}
+                  ],
+                  "timestamp": "${{ github.event.head_commit.timestamp }}"
+                }]
+              }'
+          fi
 
       - name: Notificar falha
         if: failure()
         run: |
           echo "❌ Pipeline falhou!"
-          # Aqui você pode adicionar notificações de falha
-          # Exemplo: curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} -H "Content-Type: application/json" -d '{"content":"❌ Deploy falhou! Verifique os logs."}'
+          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "embeds": [{
+                  "title": "❌ Deploy Falhou",
+                  "description": "Pipeline falhou! Verifique os logs.",
+                  "color": 15158332,
+                  "fields": [
+                    {"name": "Branch", "value": "${{ github.ref_name }}", "inline": true},
+                    {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
+                    {"name": "Autor", "value": "${{ github.actor }}", "inline": true},
+                    {"name": "Workflow", "value": "[Ver Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": false}
+                  ],
+                  "timestamp": "${{ github.event.head_commit.timestamp }}"
+                }]
+              }'
+          fi
