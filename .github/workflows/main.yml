@@ -49,9 +49,6 @@ jobs:
           envkey_XP_COOLDOWN: ${{ secrets.XP_COOLDOWN }}
           envkey_LEVEL_MULTIPLIER: ${{ secrets.LEVEL_MULTIPLIER }}
 
-      - name: Run migrations
-        run: npx prisma migrate deploy
-
   deploy:
     runs-on: ubuntu-latest
     needs: migrate
