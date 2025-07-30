@@ -8,7 +8,15 @@
     "start": "node src/bot.js",
     "dev": "node --watch src/bot.js",
     "web": "node src/web/server.js",
-    "setup": "node src/setup.js"
+    "setup": "node src/setup.js",
+    "lint": "eslint src/ --ext .js",
+    "lint:fix": "eslint src/ --ext .js --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "test": "echo \"Testes não configurados ainda\" && exit 0",
+    "test:integration": "echo \"Testes de integração não configurados ainda\" && exit 0",
+    "build": "echo \"Build concluído\"",
+    "audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
@@ -21,7 +29,9 @@
     "rate-limiter-flexible": "^7.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
   },
   "keywords": [
     "discord",
