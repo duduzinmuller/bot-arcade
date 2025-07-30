@@ -1,543 +1,72 @@
-name: Discord XP Bot CI/CD
+name: Bot Discord
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-  release:
-    types: [published]
-  schedule:
-    - cron: "0 2 * * *" # Executa diariamente às 2h da manhã
-
-env:
-  NODE_VERSION: "22"
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+    branches:
+      - main
 
 jobs:
-  # Job de cache
-  cache:
-    name: Cache Dependencies
+  check:
     runs-on: ubuntu-latest
-    outputs:
-      cache-hit: ${{ steps.cache.outputs.cache-hit }}
 
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "23"
 
-      - name: Cache node modules
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            node_modules
-            */*/node_modules
-          key: ubuntu-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ubuntu-node-
+      - name: Install dependencies
+        run: npm ci --include=dev
 
-  # Job de análise de código e qualidade
-  code-quality:
-    name: Análise de Código e Qualidade
-    runs-on: ubuntu-latest
-    needs: cache
+      - name: ESlint
+        run: npm run eslint:check
 
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - name: Prettier
+        run: npm run prettier:check
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
-
-      - name: Verificar qualidade do código
-        run: |
-          echo "🔍 Verificando qualidade do código..."
-          echo "✅ Verificação básica de qualidade concluída"
-
-      - name: Verificar vulnerabilidades
-        run: |
-          echo "🔒 Verificando vulnerabilidades..."
-          npm audit --audit-level=moderate --json > npm-audit.json || true
-
-      - name: Upload relatório de segurança
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: security-report
-          path: npm-audit.json
-
-  # Job de testes
-  test:
-    name: Executar Testes
-    runs-on: ubuntu-latest
-    needs: code-quality
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
-
-      - name: Executar testes unitários
-        run: |
-          echo "🧪 Executando testes unitários..."
-          if grep -q '"test"' package.json; then
-            npm test
-          else
-            echo "⚠️ Script de teste não configurado no package.json, pulando..."
-          fi
-
-      - name: Executar testes de integração
-        run: |
-          echo "🧪 Executando testes de integração..."
-          if grep -q '"test:integration"' package.json; then
-            npm run test:integration
-          else
-            echo "⚠️ Script de teste de integração não configurado, pulando..."
-          fi
-
-      - name: Upload cobertura de testes
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-coverage
-          path: coverage/
-
-  # Job de build e validação
-  build:
-    name: Build e Validação
-    runs-on: ubuntu-latest
-    needs: [code-quality, test]
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
-
-      - name: Validar sintaxe do código
-        run: |
-          echo "🔍 Validando sintaxe dos arquivos JavaScript..."
-          find src -name "*.js" -exec node -c {} \; || {
-            echo "❌ Erro na validação de sintaxe"
-            exit 1
-          }
-          echo "✅ Validação de sintaxe concluída!"
-
-      - name: Verificar dependências
-        run: |
-          echo "Verificando dependências..."
-          npm ls --depth=0
-
-      - name: Build do projeto
-        run: |
-          echo "Verificando se o projeto compila..."
-          node -e "console.log('Projeto compilado com sucesso!')"
-
-      - name: Validar Dockerfile
-        run: |
-          echo "🐳 Validando Dockerfile..."
-          if [ -f "Dockerfile" ]; then
-            echo "✅ Dockerfile encontrado"
-            # Verificar sintaxe básica
-            grep -q "FROM" Dockerfile && echo "✅ FROM encontrado"
-            grep -q "WORKDIR" Dockerfile && echo "✅ WORKDIR encontrado"
-            grep -q "COPY" Dockerfile && echo "✅ COPY encontrado"
-            grep -q "CMD" Dockerfile && echo "✅ CMD encontrado"
-          else
-            echo "❌ Dockerfile não encontrado"
-            exit 1
-          fi
-
-      - name: Validar docker-compose
-        run: |
-          echo "🐳 Validando docker-compose.yml..."
-          if [ -f "docker-compose.yml" ]; then
-            echo "✅ docker-compose.yml encontrado"
-            # Verificar sintaxe básica
-            grep -q "version:" docker-compose.yml && echo "✅ version encontrado"
-            grep -q "services:" docker-compose.yml && echo "✅ services encontrado"
-          else
-            echo "⚠️ docker-compose.yml não encontrado"
-          fi
-
-  # Job de build da imagem Docker
-  build-docker:
-    name: Build Docker Image
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' || github.event_name == 'release'
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extrair metadados
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-
-      - name: Build e push da imagem
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
-            CLIENT_ID=${{ secrets.CLIENT_ID }}
-            DATABASE_PATH=${{ secrets.DATABASE_PATH }}
-            WEB_PORT=${{ secrets.WEB_PORT }}
-            WEB_SECRET=${{ secrets.WEB_SECRET }}
-            XP_PER_MESSAGE=${{ secrets.XP_PER_MESSAGE }}
-            XP_COOLDOWN=${{ secrets.XP_COOLDOWN }}
-            LEVEL_MULTIPLIER=${{ secrets.LEVEL_MULTIPLIER }}
-
-  # Job de deploy para staging
-  deploy-staging:
-    name: Deploy Staging
-    runs-on: ubuntu-latest
-    needs: build-docker
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Deploy para staging (Render)
-        run: |
-          echo "🚀 Iniciando deploy para staging..."
-          if [ -n "${{ secrets.RENDER_STAGING_DEPLOY_HOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.RENDER_STAGING_DEPLOY_HOOK_URL }}" \
-              -H "Content-Type: application/json" \
-              -d '{"ref": "${{ github.sha }}", "environment": "staging"}'
-            echo "✅ Deploy para staging iniciado com sucesso!"
-          else
-            echo "⚠️ RENDER_STAGING_DEPLOY_HOOK_URL não configurado"
-            exit 1
-          fi
-
-      - name: Aguardar deploy
-        run: |
-          echo "⏳ Aguardando deploy completar..."
-          sleep 30
-
-      - name: Verificar status do deploy
-        run: |
-          echo "🔍 Verificando status do deploy..."
-          # Aqui você pode adicionar verificação do status do deploy
-
-  # Job de migração de banco de dados
   migrate:
-    name: Migração de Banco de Dados
     runs-on: ubuntu-latest
-    needs: build-docker
-    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: check
     environment: production
-
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          node-version: "23"
 
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
+      - name: Install dependencies
+        run: npm ci --include=dev
 
-      - name: Executar migrações
-        run: |
-          echo "🔄 Executando migrações de banco de dados..."
-          if [ -f "src/setup.js" ]; then
-            node src/setup.js
-            echo "✅ Migrações executadas com sucesso!"
-          else
-            echo "⚠️ Arquivo src/setup.js não encontrado, pulando migrações..."
-          fi
-        env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          DATABASE_PATH: ${{ secrets.DATABASE_PATH }}
-          WEB_PORT: ${{ secrets.WEB_PORT }}
-          WEB_SECRET: ${{ secrets.WEB_SECRET }}
-          XP_PER_MESSAGE: ${{ secrets.XP_PER_MESSAGE }}
-          XP_COOLDOWN: ${{ secrets.XP_COOLDOWN }}
-          LEVEL_MULTIPLIER: ${{ secrets.LEVEL_MULTIPLIER }}
+      - name: Make envfile
+        uses: SpicyPizza/create-envfile@v2.0
+        with:
+          envkey_DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          envkey_CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          envkey_DATABASE_PATH: ${{ secrets.DATABASE_PATH }}
+          envkey_WEB_PORT: ${{ secrets.WEB_PORT }}
+          envkey_WEB_SECRET: ${{ secrets.WEB_SECRET }}
+          envkey_XP_PER_MESSAGE: ${{ secrets.XP_PER_MESSAGE }}
+          envkey_XP_COOLDOWN: ${{ secrets.XP_COOLDOWN }}
+          envkey_LEVEL_MULTIPLIER: ${{ secrets.LEVEL_MULTIPLIER }}
 
-  # Job de deploy para produção
-  deploy-production:
-    name: Deploy Produção
+      - name: Run migrations
+        run: npx prisma migrate deploy
+
+  deploy:
     runs-on: ubuntu-latest
     needs: migrate
-    if: github.event_name == 'release' && github.event.action == 'published'
     environment: production
 
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Deploy para produção (Render)
+      - name: Deploy to Production
         run: |
-          echo "🚀 Iniciando deploy para produção..."
-          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
-              -H "Content-Type: application/json" \
-              -d '{"ref": "${{ github.sha }}", "environment": "production"}'
-            echo "✅ Deploy para produção iniciado com sucesso!"
-          else
-            echo "⚠️ RENDER_DEPLOY_HOOK_URL não configurado"
-            exit 1
-          fi
-
-      - name: Aguardar deploy
-        run: |
-          echo "⏳ Aguardando deploy completar..."
-          sleep 60
-
-      - name: Verificar status do deploy
-        run: |
-          echo "🔍 Verificando status do deploy..."
-          # Aqui você pode adicionar verificação do status do deploy
-
-      - name: Notificar deploy
-        run: |
-          echo "🎉 Deploy para produção concluído!"
-          # Aqui você pode adicionar notificações
-
-  # Job de backup automático
-  backup:
-    name: Backup Automático
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
-
-      - name: Backup do banco de dados
-        run: |
-          echo "🔄 Iniciando backup automático..."
-          mkdir -p backup
-          # Backup do banco SQLite se existir
-          if [ -f "data/bot.db" ]; then
-            cp data/bot.db backup/bot_$(date +%Y%m%d_%H%M%S).db
-            echo "✅ Backup do banco criado"
-          else
-            echo "⚠️ Arquivo de banco não encontrado"
-          fi
-
-      - name: Upload backup
-        uses: actions/upload-artifact@v4
-        with:
-          name: backup-$(date +%Y%m%d)
-          path: backup/
-          retention-days: 30
-
-  # Job de monitoramento
-  monitoring:
-    name: Monitoramento
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
-
-      - name: Verificar saúde do bot
-        run: |
-          echo "🔍 Verificando saúde do bot..."
-          # Verificar se os arquivos principais existem
-          if [ -f "src/bot.js" ]; then
-            echo "✅ Arquivo bot.js encontrado"
-          else
-            echo "❌ Arquivo bot.js não encontrado"
-            exit 1
-          fi
-
-      - name: Verificar uso de recursos
-        run: |
-          echo "📊 Verificando uso de recursos..."
-          # Verificar tamanho do projeto
-          echo "Tamanho do projeto: $(du -sh . | cut -f1)"
-          echo "Arquivos JavaScript: $(find src -name '*.js' | wc -l)"
-
-  # Job de documentação
-  docs:
-    name: Atualizar Documentação
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Instalar dependências
-        run: |
-          echo "📦 Instalando dependências..."
-          npm ci || npm install
-
-      - name: Gerar documentação
-        run: |
-          echo "📚 Gerando documentação..."
-          # Verificar estrutura do projeto
-          echo "Estrutura do projeto:"
-          find src -type f -name "*.js" | head -10
-
-          # Gerar documentação básica
-          echo "# Discord XP Bot" > DOCS.md
-          echo "## Estrutura do Projeto" >> DOCS.md
-          echo "\`\`\`" >> DOCS.md
-          tree src -I "node_modules" >> DOCS.md 2>/dev/null || find src -type f >> DOCS.md
-          echo "\`\`\`" >> DOCS.md
-
-      - name: Upload documentação
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation
-          path: DOCS.md
-          retention-days: 30
-
-  # Job de notificações
-  notify:
-    name: Notificações
-    runs-on: ubuntu-latest
-    needs: [build-docker, deploy-production]
-    if: always()
-
-    steps:
-      - name: Notificar sucesso
-        if: success()
-        run: |
-          echo "✅ Pipeline executado com sucesso!"
-          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "embeds": [{
-                  "title": "🎉 Deploy Concluído",
-                  "description": "Pipeline executado com sucesso!",
-                  "color": 3066993,
-                  "fields": [
-                    {"name": "Branch", "value": "${{ github.ref_name }}", "inline": true},
-                    {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
-                    {"name": "Autor", "value": "${{ github.actor }}", "inline": true}
-                  ],
-                  "timestamp": "${{ github.event.head_commit.timestamp }}"
-                }]
-              }'
-          fi
-
-      - name: Notificar falha
-        if: failure()
-        run: |
-          echo "❌ Pipeline falhou!"
-          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "embeds": [{
-                  "title": "❌ Deploy Falhou",
-                  "description": "Pipeline falhou! Verifique os logs.",
-                  "color": 15158332,
-                  "fields": [
-                    {"name": "Branch", "value": "${{ github.ref_name }}", "inline": true},
-                    {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
-                    {"name": "Autor", "value": "${{ github.actor }}", "inline": true},
-                    {"name": "Workflow", "value": "[Ver Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": false}
-                  ],
-                  "timestamp": "${{ github.event.head_commit.timestamp }}"
-                }]
-              }'
-          fi
+          curl "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
