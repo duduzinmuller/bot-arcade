@@ -3,7 +3,7 @@ name: Axel Deploy
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   check:
